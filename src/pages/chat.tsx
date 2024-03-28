@@ -4,7 +4,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useEffect, useRef, useState } from "react";
-import { getChatMessages, getUserChats, sendMessage } from "../api";
+import { getChatMessages, getUserChats, sendMessage, logoutUser } from "../api";
 import AddChatModal from "../components/chat/AddChatModal";
 import ChatItem from "../components/chat/ChatItem";
 import MessageItem from "../components/chat/MessageItem";
@@ -352,6 +352,20 @@ const ChatPage = () => {
     // updating on each `useEffect` call but on each socket call.
   }, [socket, chats]);
 
+  const handleLogout = async () => {
+    await requestHandler(
+      async () => await logoutUser(),
+      setLoadingChats,
+      (res) => {
+        alert(res?.message);
+        console.log(res)
+        LocalStorage.clear();
+        window.location.href = '/login';
+      },
+      alert
+    )
+  }
+
   return (
     <>
       <AddChatModal
@@ -387,50 +401,63 @@ const ChatPage = () => {
             </div>
           ) : (
             // Iterating over the chats array
-            [...chats]
-              // Filtering chats based on a local search query
-              .filter((chat) =>
-                // If there's a localSearchQuery, filter chats that contain the query in their metadata title
-                localSearchQuery
-                  ? getChatObjectMetadata(chat, user!)
-                      .title?.toLocaleLowerCase()
-                      ?.includes(localSearchQuery)
-                  : // If there's no localSearchQuery, include all chats
-                    true
-              )
-              .map((chat) => {
-                return (
-                  <ChatItem
-                    chat={chat}
-                    isActive={chat._id === currentChat.current?._id}
-                    unreadCount={
-                      unreadMessages.filter((n) => n.chat === chat._id).length
-                    }
-                    onClick={(chat) => {
-                      if (
-                        currentChat.current?._id &&
-                        currentChat.current?._id === chat._id
-                      )
-                        return;
-                      LocalStorage.set("currentChat", chat);
-                      currentChat.current = chat;
-                      setMessage("");
-                      getMessages();
-                    }}
-                    key={chat._id}
-                    onChatDelete={(chatId) => {
-                      setChats((prev) =>
-                        prev.filter((chat) => chat._id !== chatId)
-                      );
-                      if (currentChat.current?._id === chatId) {
-                        currentChat.current = null;
-                        LocalStorage.remove("currentChat");
+            <div className="h-100">
+              {
+                [...chats]
+                // Filtering chats based on a local search query
+                .filter((chat) =>
+                  // If there's a localSearchQuery, filter chats that contain the query in their metadata title
+                  localSearchQuery
+                    ? getChatObjectMetadata(chat, user!)
+                        .title?.toLocaleLowerCase()
+                        ?.includes(localSearchQuery)
+                    : // If there's no localSearchQuery, include all chats
+                      true
+                )
+                .map((chat) => {
+                  return (
+                    <ChatItem
+                      chat={chat}
+                      isActive={chat._id === currentChat.current?._id}
+                      unreadCount={
+                        unreadMessages.filter((n) => n.chat === chat._id).length
                       }
-                    }}
-                  />
-                );
-              })
+                      onClick={(chat) => {
+                        if (
+                          currentChat.current?._id &&
+                          currentChat.current?._id === chat._id
+                        )
+                          return;
+                        LocalStorage.set("currentChat", chat);
+                        currentChat.current = chat;
+                        setMessage("");
+                        getMessages();
+                      }}
+                      key={chat._id}
+                      onChatDelete={(chatId) => {
+                        setChats((prev) =>
+                          prev.filter((chat) => chat._id !== chatId)
+                        );
+                        if (currentChat.current?._id === chatId) {
+                          currentChat.current = null;
+                          LocalStorage.remove("currentChat");
+                        }
+                      }}
+                    />
+                  );
+                })
+              }
+            </div>
           )}
+          <div className="z-10 fixed bottom-0 bg-dark py-4 flex justify-between items-center gap-4">
+
+            <button
+              onClick={handleLogout}
+              className="rounded-full border-none bg-danger text-white py-2 px-4 flex flex-shrink-0"
+            >
+              {"<- logout"}
+            </button>
+          </div>
         </div>
         <div className="w-2/3 border-l-[0.1px] border-secondary">
           {currentChat.current && currentChat.current?._id ? (
